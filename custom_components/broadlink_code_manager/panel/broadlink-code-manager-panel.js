@@ -139,21 +139,108 @@ class BroadlinkCodeManagerPanel extends HTMLElement {
     }
   }
 
-  _copyYaml(entityId, device, command) {
-    const yaml =
-      `action: remote.send_command\n` +
-      `target:\n` +
-      `  entity_id: ${entityId}\n` +
-      `data:\n` +
-      `  device: ${device}\n` +
-      `  command: ${command}\n`;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+  _buildYaml(entityId, device, command) {
+    // Ready-to-paste action mapping (matches Home Assistant's own action copy
+    // format). Values are quoted so names with spaces/special chars stay valid.
+    return (
+      "action: remote.send_command\n" +
+      "target:\n" +
+      "  entity_id: " +
+      entityId +
+      "\n" +
+      "data:\n" +
+      "  device: " +
+      yamlValue(device) +
+      "\n" +
+      "  command: " +
+      yamlValue(command) +
+      "\n"
+    );
+  }
+
+  _openYaml(entityId, device, command) {
+    const existing = this.shadowRoot.querySelector(".modal-backdrop");
+    if (existing) existing.remove();
+
+    const yaml = this._buildYaml(entityId, device, command);
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal yaml-modal">
+        <h2>YAML für Automation / Skript</h2>
+        <p class="yaml-sub">${escapeHtml(device)} · ${escapeHtml(command)}</p>
+        <textarea class="yaml-text" readonly spellcheck="false" rows="6"></textarea>
+        <div class="copy-status"></div>
+        <div class="modal-actions">
+          <button class="btn cancel">Schliessen</button>
+          <button class="btn primary do-copy">Kopieren</button>
+        </div>
+      </div>`;
+
+    const textarea = backdrop.querySelector(".yaml-text");
+    textarea.value = yaml;
+
+    backdrop.addEventListener("click", (ev) => {
+      if (ev.target === backdrop) backdrop.remove();
+    });
+    backdrop.querySelector(".cancel").addEventListener("click", () =>
+      backdrop.remove()
+    );
+    backdrop
+      .querySelector(".do-copy")
+      .addEventListener("click", () => this._copyYaml(backdrop));
+
+    this.shadowRoot.appendChild(backdrop);
+    // Preselect so manual Cmd/Strg+C works immediately even without JS copy.
+    textarea.focus();
+    textarea.select();
+  }
+
+  _copyYaml(backdrop) {
+    const textarea = backdrop.querySelector(".yaml-text");
+    const status = backdrop.querySelector(".copy-status");
+    const text = textarea.value;
+
+    const ok = () => {
+      status.textContent = "In die Zwischenablage kopiert ✓";
+      status.className = "copy-status ok";
+    };
+    const manual = () => {
+      status.textContent =
+        "Automatisches Kopieren nicht möglich – Text ist markiert, bitte mit Cmd/Strg+C kopieren.";
+      status.className = "copy-status error";
+      textarea.focus();
+      textarea.select();
+    };
+
+    // Modern API only works in secure contexts (HTTPS/localhost). Fall back to
+    // execCommand on the selected textarea for plain-HTTP LAN access.
+    if (
+      window.isSecureContext &&
+      navigator.clipboard &&
+      navigator.clipboard.writeText
+    ) {
       navigator.clipboard
-        .writeText(yaml)
-        .then(() => this._toast("YAML in die Zwischenablage kopiert"))
-        .catch(() => this._toast("Kopieren fehlgeschlagen"));
+        .writeText(text)
+        .then(ok)
+        .catch(() => this._execCopy(textarea, ok, manual));
     } else {
-      this._toast("Zwischenablage nicht verfügbar");
+      this._execCopy(textarea, ok, manual);
+    }
+  }
+
+  _execCopy(textarea, ok, manual) {
+    try {
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      if (document.execCommand("copy")) {
+        ok();
+      } else {
+        manual();
+      }
+    } catch (err) {
+      manual();
     }
   }
 
@@ -399,7 +486,7 @@ class BroadlinkCodeManagerPanel extends HTMLElement {
         if (action === "send") this._send(entity, device, command);
         else if (action === "delete") this._delete(entity, device, command);
         else if (action === "delete-device") this._deleteDevice(entity, device);
-        else if (action === "copy") this._copyYaml(entity, device, command);
+        else if (action === "copy") this._openYaml(entity, device, command);
         else if (action === "learn") this._openLearn(entity, device);
         else if (action === "export") this._export(entity, device || null);
       });
@@ -512,6 +599,13 @@ function escapeAttr(value) {
   return escapeHtml(value).split('"').join("&quot;");
 }
 
+function yamlValue(value) {
+  // Always double-quote and escape so device/command names with spaces or
+  // special characters remain valid YAML.
+  const s = String(value == null ? "" : value);
+  return '"' + s.split("\\").join("\\\\").split('"').join('\\"') + '"';
+}
+
 const STYLES = `
   :host { display: block; height: 100%; background: var(--primary-background-color); color: var(--primary-text-color); }
   .page { max-width: 1100px; margin: 0 auto; padding: 16px; box-sizing: border-box; }
@@ -565,6 +659,16 @@ const STYLES = `
   .learn-status { margin-top: 12px; font-size: 13px; min-height: 18px; }
   .learn-status.active { color: var(--primary-color); }
   .learn-status.error { color: var(--error-color); }
+  .yaml-modal { width: 460px; }
+  .yaml-sub { margin: 0 0 10px; font-size: 13px; color: var(--secondary-text-color);
+    font-family: var(--code-font-family, monospace); }
+  .yaml-text { width: 100%; box-sizing: border-box; font-family: var(--code-font-family, monospace);
+    font-size: 13px; line-height: 1.4; padding: 10px; border-radius: 8px;
+    border: 1px solid var(--divider-color); background: var(--primary-background-color);
+    color: inherit; resize: vertical; }
+  .copy-status { margin-top: 10px; font-size: 13px; min-height: 18px; }
+  .copy-status.ok { color: var(--success-color, var(--primary-color)); }
+  .copy-status.error { color: var(--error-color); }
 `;
 
 customElements.define("broadlink-code-manager-panel", BroadlinkCodeManagerPanel);
