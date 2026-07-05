@@ -46,11 +46,21 @@ def _normalize_mac(mac: str | None) -> str | None:
 
 
 def _mac_for_entity(hass: HomeAssistant, entry: er.RegistryEntry) -> str | None:
-    """Resolve the storage MAC for a Broadlink remote entity.
+    """Resolve the storage token for a Broadlink remote entity.
 
-    Primary source is the device registry connection MAC; falls back to the
-    Broadlink config entry `unique_id` (which is the formatted MAC).
+    Broadlink names its code store `broadlink_remote_<device.mac.hex()>_codes`
+    and sets the remote entity's own `unique_id` to that exact same value
+    (``device.unique_id`` == config-entry ``unique_id`` == ``mac.hex()``). So the
+    entity's registry ``unique_id`` maps 1:1 to the storage file and is the most
+    reliable source. Device-registry MAC and config-entry unique_id are only
+    fallbacks for unusual setups.
     """
+    # Primary: the entity's own unique_id is the storage token verbatim.
+    if entry.unique_id:
+        mac = _normalize_mac(entry.unique_id)
+        if mac:
+            return mac
+
     dev_reg = dr.async_get(hass)
 
     if entry.device_id:
