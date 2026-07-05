@@ -17,14 +17,17 @@ services**. It **only reads** `.storage`; it never writes to it directly.
 > This is an independent management UI. It does not replace the Broadlink
 > integration — it complements it.
 
-## Features (v0.1)
+## Features
 
 - **Inventory** of every Broadlink remote, grouped **remote → device → command**.
 - **Send / test** a command (`remote.send_command`).
-- **Delete** a command with confirmation (`remote.delete_command`).
+- **Delete** a single command, or **delete a whole device** (removes all of its
+  commands at once), each with confirmation (`remote.delete_command`).
 - **Copy YAML** — ready-to-paste `remote.send_command` snippet.
 - **Learn** a new command (`remote.learn_command`) with on-screen instructions,
-  auto-refreshing once the code is captured.
+  auto-refreshing once the code is captured. The device field suggests existing
+  device names and tells you whether you are adding to an existing device or
+  creating a new one.
 - **Export** a remote or a single device to JSON (optionally including the raw
   base64 codes, so the export is a real backup).
 - **Search / filter** across all commands and a manual **Refresh**.

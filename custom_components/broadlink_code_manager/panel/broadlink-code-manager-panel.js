@@ -109,6 +109,36 @@ class BroadlinkCodeManagerPanel extends HTMLElement {
     }
   }
 
+  async _deleteDevice(entityId, device) {
+    const remote = (this._inventory || []).find(
+      (r) => r.entity_id === entityId
+    );
+    const dev = remote && remote.devices.find((d) => d.device === device);
+    const commands = dev ? dev.commands.map((c) => c.command) : [];
+    if (!commands.length) return;
+    if (
+      !window.confirm(
+        `Gerät „${device}" komplett löschen?\n\n` +
+          `${commands.length} Befehl(e) werden entfernt:\n` +
+          `${commands.join(", ")}\n\n(${entityId})`
+      )
+    ) {
+      return;
+    }
+    try {
+      // remote.delete_command accepts a list of commands; removing all of a
+      // device's commands makes Broadlink drop the (now empty) device.
+      await this._callRemote("remote.delete_command", entityId, {
+        device,
+        command: commands,
+      });
+      this._toast(`Gerät gelöscht: ${device}`);
+      await this._reload();
+    } catch (err) {
+      this._toast(`Fehler beim Löschen: ${(err && err.message) || err}`);
+    }
+  }
+
   _copyYaml(entityId, device, command) {
     const yaml =
       `action: remote.send_command\n` +
@@ -133,17 +163,26 @@ class BroadlinkCodeManagerPanel extends HTMLElement {
     const existing = this.shadowRoot.querySelector(".modal-backdrop");
     if (existing) existing.remove();
 
+    const remote = (this._inventory || []).find(
+      (r) => r.entity_id === entityId
+    );
+    const existingDevices = remote ? remote.devices.map((d) => d.device) : [];
+    const options = existingDevices
+      .map((d) => `<option value="${escapeAttr(d)}"></option>`)
+      .join("");
+
     const backdrop = document.createElement("div");
     backdrop.className = "modal-backdrop";
     backdrop.innerHTML = `
       <div class="modal">
         <h2>Befehl anlernen</h2>
         <label>Remote</label>
-        <input class="l-remote" value="${entityId}" readonly />
+        <input class="l-remote" value="${escapeAttr(entityId)}" readonly />
         <label>Gerät</label>
-        <input class="l-device" value="${device || ""}" placeholder="z. B. hantech_klima" ${
-      device ? "readonly" : ""
-    } />
+        <input class="l-device" value="${escapeAttr(device || "")}" list="bcm-devices"
+          placeholder="z. B. hantech_klima" ${device ? "readonly" : ""} />
+        <datalist id="bcm-devices">${options}</datalist>
+        <div class="device-hint"></div>
         <label>Befehlsname</label>
         <input class="l-command" placeholder="z. B. power" />
         <div class="learn-status"></div>
@@ -162,6 +201,26 @@ class BroadlinkCodeManagerPanel extends HTMLElement {
     backdrop
       .querySelector(".start")
       .addEventListener("click", () => this._startLearn(backdrop));
+
+    // Only offer the existence hint when the device name is editable (new).
+    if (!device) {
+      const deviceInput = backdrop.querySelector(".l-device");
+      const hint = backdrop.querySelector(".device-hint");
+      const updateHint = () => {
+        const value = deviceInput.value.trim();
+        if (!value) {
+          hint.textContent = "";
+          hint.className = "device-hint";
+        } else if (existingDevices.includes(value)) {
+          hint.textContent = "Bestehendes Gerät – Befehl wird ergänzt.";
+          hint.className = "device-hint info";
+        } else {
+          hint.textContent = "Neues Gerät wird angelegt.";
+          hint.className = "device-hint";
+        }
+      };
+      deviceInput.addEventListener("input", updateHint);
+    }
 
     this.shadowRoot.appendChild(backdrop);
     backdrop.querySelector(".l-command").focus();
@@ -339,6 +398,7 @@ class BroadlinkCodeManagerPanel extends HTMLElement {
         const { action, entity, device, command } = el.dataset;
         if (action === "send") this._send(entity, device, command);
         else if (action === "delete") this._delete(entity, device, command);
+        else if (action === "delete-device") this._deleteDevice(entity, device);
         else if (action === "copy") this._copyYaml(entity, device, command);
         else if (action === "learn") this._openLearn(entity, device);
         else if (action === "export") this._export(entity, device || null);
@@ -432,6 +492,9 @@ class BroadlinkCodeManagerPanel extends HTMLElement {
             <button class="btn small" data-action="export" data-entity="${escapeAttr(
               remote.entity_id
             )}" data-device="${escapeAttr(dev.device)}">Export</button>
+            <button class="btn small danger" data-action="delete-device" data-entity="${escapeAttr(
+              remote.entity_id
+            )}" data-device="${escapeAttr(dev.device)}">Gerät löschen</button>
           </div>
         </div>
         ${rows}
@@ -500,6 +563,8 @@ const STYLES = `
     border: 1px solid var(--divider-color); background: var(--primary-background-color); color: inherit; }
   .modal input[readonly] { opacity: 0.7; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .device-hint { margin-top: 6px; font-size: 12px; min-height: 15px; color: var(--secondary-text-color); }
+  .device-hint.info { color: var(--primary-color); }
   .learn-status { margin-top: 12px; font-size: 13px; min-height: 18px; }
   .learn-status.active { color: var(--primary-color); }
   .learn-status.error { color: var(--error-color); }
