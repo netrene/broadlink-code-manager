@@ -1,0 +1,14 @@
+{
+  "domain": "broadlink_code_manager",
+  "name": "Broadlink Code Manager",
+  "codeowners": ["@netrene"],
+  "config_flow": true,
+  "dependencies": ["http", "websocket_api", "frontend"],
+  "after_dependencies": ["broadlink"],
+  "documentation": "https://github.com/netrene/broadlink-code-manager",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/netrene/broadlink-code-manager/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

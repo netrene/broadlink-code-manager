@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Broadlink Code Manager",
+        "description": "Fügt der Seitenleiste das Panel „Broadlink Codes“ zur Verwaltung angelernter IR/RF-Codes hinzu. Keine Konfiguration erforderlich."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Broadlink Code Manager ist bereits eingerichtet."
+    }
+  }
+}
