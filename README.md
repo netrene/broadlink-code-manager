@@ -28,8 +28,8 @@ services**. It **only reads** `.storage`; it never writes to it directly.
   auto-refreshing once the code is captured. The device field suggests existing
   device names and tells you whether you are adding to an existing device or
   creating a new one.
-- **Export** a remote or a single device to JSON (optionally including the raw
-  base64 codes, so the export is a real backup).
+- **Export** a remote to JSON (optionally including the raw base64 codes, so the
+  export is a real backup).
 - **Search / filter** across all commands and a manual **Refresh**.
 
 Multiple Broadlink remotes are supported.

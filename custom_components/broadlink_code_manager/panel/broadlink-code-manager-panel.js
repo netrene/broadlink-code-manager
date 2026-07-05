@@ -489,9 +489,6 @@ class BroadlinkCodeManagerPanel extends HTMLElement {
             <button class="btn small" data-action="learn" data-entity="${escapeAttr(
               remote.entity_id
             )}" data-device="${escapeAttr(dev.device)}">+ Anlernen</button>
-            <button class="btn small" data-action="export" data-entity="${escapeAttr(
-              remote.entity_id
-            )}" data-device="${escapeAttr(dev.device)}">Export</button>
             <button class="btn small danger" data-action="delete-device" data-entity="${escapeAttr(
               remote.entity_id
             )}" data-device="${escapeAttr(dev.device)}">Gerät löschen</button>
