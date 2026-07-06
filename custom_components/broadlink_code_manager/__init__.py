@@ -28,7 +28,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Bump when panel.js changes so browsers reload it instead of using cache.
-PANEL_VERSION = "0.2.4"
+PANEL_VERSION = "0.2.5"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
